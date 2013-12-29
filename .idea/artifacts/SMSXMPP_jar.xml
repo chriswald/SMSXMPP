@@ -1,0 +1,13 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="SMSXMPP:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/SMSXMPP_jar</output-path>
+    <root id="archive" name="SMSXMPP.jar">
+      <element id="module-output" name="SMSXMPP" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/smack.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/smackx-debug.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/smackx-jingle.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/smackx.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/mail.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

@@ -1,5 +1,7 @@
 import org.jivesoftware.smack.*;
+import org.jivesoftware.smack.packet.Presence;
 
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -134,6 +136,9 @@ public class SMSXMPP {
         } else if (command.equals("stop")) {
             // Stop sending chat messages to the phone.
             SendStopCommand();
+        } else if (command.equals("terminate")) {
+            // Close the program "normally".
+            TerminateServer();
         } else {
             ChangeRecipientCommand(command);
         }
@@ -154,6 +159,27 @@ public class SMSXMPP {
         boolean success = smtpsms.Write("You will no longer receive messages.");
         if (!success) {
             System.out.println("Notification delivery [FAIL]");
+        }
+    }
+
+    private void TerminateServer() {
+        System.out.print("System TERMINATION...");
+        smtpsms.Write("Are you sure you wish to terminate the server?");
+        String response;
+        while ((response = smtpsms.Read()) == null) {
+            Wait();
+        }
+        if (response.toLowerCase().trim().equals("yes")) {
+            boolean success = smtpsms.Write("Server going down NOW.");
+            if (!success) {
+                System.out.println("Notification delivery [FAIL]");
+            }
+            System.out.println(" [Done]");
+            this.connection.disconnect();
+            this.smtpsms.Close();
+            System.exit(0);
+        } else {
+            System.out.println(" [ABORT]");
         }
     }
 

@@ -4,6 +4,8 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import javax.mail.search.FlagTerm;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.rmi.RemoteException;
 import java.util.*;
 
 /**
@@ -72,6 +74,17 @@ public class SMTPSMS {
         return this.GetStore() && this.GetFolder();
     }
 
+    public boolean Close() {
+        try {
+            this.store.close();
+            this.folder.close(true);
+            this.transport.close();
+        } catch (MessagingException e) {
+            return false;
+        }
+        return true;
+    }
+
     public boolean Write(String message) {
         if (!this.IsConnected())
             this.connectOutbound();
@@ -125,6 +138,8 @@ public class SMTPSMS {
             if (!(msg_contents instanceof Multipart)) {
                 return getMessageContents(message);
             }
+        } catch (SocketTimeoutException e) {
+            return null;
         } catch (MessagingException e) {
             return null;
         } catch (IOException e) {
@@ -164,15 +179,11 @@ public class SMTPSMS {
     }
 
     private boolean GetFolder() {
-        try
-        {
+        try {
             String folder_name = "Inbox";
             this.folder = this.store.getFolder(folder_name);
             this.folder.open(Folder.READ_WRITE);
-        }
-        catch (MessagingException e)
-        {
-            System.out.println(e);
+        } catch (MessagingException e) {
             return false;
         }
         return true;
@@ -180,17 +191,13 @@ public class SMTPSMS {
 
     private Message[] GetMessages() {
         FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
-        try
-        {
+        try {
             if (!this.store.isConnected())
                 this.GetStore();
             if (!this.folder.isOpen())
                 this.GetFolder();
             return this.folder.search(ft);
-        }
-        catch (MessagingException e)
-        {
-            System.err.println(e);
+        } catch (MessagingException e) {
             return new Message[0];
         }
     }

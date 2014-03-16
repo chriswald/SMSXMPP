@@ -5,7 +5,7 @@ public class FBMessageListener implements MessageListener {
     private SMTPSMS smtpsms;
     private Roster roster;
     private boolean send = true;
-    private String last_recipient = "-1110131015@chat.facebook.com";
+    private String last_recipient;
 
     public FBMessageListener(SMTPSMS smtpsms, Roster roster) {
         this.smtpsms = smtpsms;

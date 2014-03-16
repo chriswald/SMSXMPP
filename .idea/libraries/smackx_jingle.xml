@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="smackx-jingle">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/smackx-jingle.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

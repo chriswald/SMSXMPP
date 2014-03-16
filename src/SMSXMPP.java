@@ -1,9 +1,11 @@
-import org.jivesoftware.smack.*;
-import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.Connection;
+import org.jivesoftware.smack.RosterEntry;
 
-import java.net.SocketTimeoutException;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * Author: Chris Wald
@@ -11,50 +13,116 @@ import java.util.Map;
  * Time: 11:09 AM
  */
 public class SMSXMPP {
-    private String recipient = "";
     private static String FB_CHAT_USER;
     private static String FB_CHAT_PASS;
     private static String SMS_USER;
     private static String SMS_PASS;
 
-    private Roster roster;
     private SMTPSMS smtpsms;
-    private Connection connection;
     private FBMessageListener messageListener;
-    private FBRosterListener rosterListener;
 
-    private Map<String, Chat> chats = new HashMap<String, Chat>();
+    private JabberComm comm = new JabberComm();
+    private JabberLogin fblogin = new FacebookLogin();
+    private JabberLogin googlelogin = new GoogleTalkLogin();
+    private ArrayList<JabberLogin> services = new ArrayList<JabberLogin>();
+
+    private static String serviceLoginInfoFile;
+    private ArrayList<ServiceLoginInfo> loginInfo = new ArrayList<ServiceLoginInfo>();
 
     public static void main(String[] args) {
-        if (args.length != 4) {
+        if (args.length != 3) {
             System.out.println("Usage:");
-            System.out.println("  smsxmpp <chat username> <chat password> <gmail username> <gmail password>");
+            System.out.println("  smsxmpp <filename> <phone username> <phone password>");
             return;
         }
 
-        FB_CHAT_USER = args[0];
-        FB_CHAT_PASS = args[1];
-        SMS_USER     = args[2];
-        SMS_PASS     = args[3];
+        serviceLoginInfoFile = args[0];
+        SMS_USER = args[1];
+        SMS_PASS = args[2];
 
         new SMSXMPP().run();
     }
 
+    private boolean parseFile(String filename) {
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(filename));
+            String line;
+            ServiceLoginInfo info = null;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty())
+                    continue;
+                if (line.startsWith("[") && line.endsWith("]")) {
+                    // Store the service name
+                    info = new ServiceLoginInfo();
+                    info.serviceName = line.substring(0, line.length()-1).substring(1).trim();
+
+                    // Store the username
+                    line = br.readLine();
+                    if (line != null) {
+                        info.username = line.trim();
+                    } else {
+                        System.out.println("Could not find username for " + info.serviceName);
+                        return false;
+                    }
+
+                    // Store the password
+                    line = br.readLine();
+                    if (line != null) {
+                        info.password = line.trim();
+                    } else {
+                        System.out.println("Could not find password for " + info.serviceName);
+                        return false;
+                    }
+
+                    this.loginInfo.add(info);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not open file " + filename);
+            return false;
+        } catch (IOException e) {
+            System.out.println("Could not read file " + filename);
+            return false;
+        }
+
+        return true;
+    }
+
     private void run() {
-        // Login to Facebook Chat.
-        FacebookLogin(FB_CHAT_USER, FB_CHAT_PASS);
+        Connection.DEBUG_ENABLED = false;
+        boolean success = false;
+
+        parseFile(serviceLoginInfoFile);
+        services.add(this.fblogin);
+        services.add(this.googlelogin);
+
+        // Login to Chats.
+        for (ServiceLoginInfo info : loginInfo) {
+            for (JabberLogin login : services) {
+                if (info.serviceName.equals(login.getServiceName())) {
+                    if (ChatLogin(login, info.username, info.password))
+                        success = true; // Got at least one service logged in.
+                }
+            }
+        }
+        if (!success) return;
 
         // Open a new communication channel to a phone.
-        OpenPhoneComm();
+        success = OpenPhoneComm();
+        if (!success) return;
 
         // Test input channel.
-        RegisterPhone();
+        success = RegisterPhone();
+        if (!success) return;
 
         // Test output channel.
-        TestPhoneComm();
+        success = TestPhoneComm();
+        if (!success) return;
 
         // Set up channels to listen for uninitiated chats.
-        CreateChatListeners();
+        success = CreateChatListeners();
+        if (!success) return;
 
         System.out.println("-- Configuration Done. --");
 
@@ -69,43 +137,68 @@ public class SMSXMPP {
         }
     }
 
-    /*private void PrintRoster() {
-        for (RosterEntry entry : this.roster.getEntries()) {
-            System.out.println(entry.getName() + " " + entry.getUser());
-        }
-    }*/
+    // Login to Chat
+    private boolean ChatLogin(JabberLogin login, String user, String pass) {
+        long start;
+        start = System.currentTimeMillis();
+        System.out.print("Logging into " + login.getServiceName() + " as " + user + "...");
 
-    private void OpenPhoneComm() {
-        System.out.print("Opening phone communication...");
-        this.smtpsms = new SMTPSMS(SMS_USER, SMS_PASS);
-        boolean success = this.smtpsms.Open();
-        if (!success) {
-            System.out.println(" [FAIL]");
-            System.exit(-2);
+        boolean success = comm.Login(login, user, pass);
+        if (success) {
+            System.out.print(" [Done ");
+            System.out.println(TimeDiffString(start, System.currentTimeMillis()) + "]");
+            return true;
         } else {
-            System.out.println(" [Done]");
+            System.out.println(" [FAIL]");
+            return false;
         }
     }
 
-    private void TestPhoneComm() {
+    private boolean OpenPhoneComm() {
+        long start;
+        start = System.currentTimeMillis();
+        System.out.print("Opening phone communication...");
+        this.smtpsms = new SMTPSMS(SMS_USER, SMS_PASS);
+        boolean success = this.smtpsms.Open();
+        if (success) {
+            System.out.print(" [Done ");
+            System.out.println(TimeDiffString(start, System.currentTimeMillis()) + "]");
+            return true;
+        } else {
+            System.out.println(" [FAIL]");
+            return false;
+        }
+    }
+
+    private boolean RegisterPhone() {
+        System.out.println("Waiting for phone.");
+        System.out.println("Please send a text message to " + SMS_USER + "@gmail.com");
+
+        // Wait for a message to come in.
+        while (this.smtpsms.Read() == null) {
+            Wait();
+        }
+        System.out.println("Configured for " + this.smtpsms.GetRecipient());
+        return true;
+    }
+
+    private boolean TestPhoneComm() {
         System.out.print("Testing communication to phone...");
         String setup_message = "Systems Functional\n";
         boolean success = this.smtpsms.Write(setup_message);
         if (success) {
             System.out.println(" [Done]");
+            return true;
         } else {
             System.out.println(" [FAIL]");
-            System.exit(-3);
+            return false;
         }
     }
 
-    private void CreateChatListeners() {
-        Roster.setDefaultSubscriptionMode(Roster.SubscriptionMode.accept_all);
-        messageListener = new FBMessageListener(smtpsms, roster);
-        ChatManager chatManager = connection.getChatManager();
-        for (RosterEntry entry : roster.getEntries()) {
-            this.chats.put(entry.getUser(), chatManager.createChat(entry.getUser(), messageListener));
-        }
+    private boolean CreateChatListeners() {
+        this.messageListener = new FBMessageListener(smtpsms, comm.getRoster());
+        comm.SetMessageListener(this.messageListener);
+        return true;
     }
 
     private void GetPhoneMessages() {
@@ -114,8 +207,8 @@ public class SMSXMPP {
             if (contents.startsWith(">>")) {
                 ProcessCommands(contents);
             } else if (contents.startsWith("!")) {
-                ChangeRecipient(messageListener.getLastRecipient());
-                contents  = contents.substring("!".length()).trim();
+                ChangeRecipient(this.messageListener.getLastRecipient());
+                contents = contents.substring("!".length()).trim();
                 SendMessageToChat(contents);
             } else {
                 SendMessageToChat(contents);
@@ -144,6 +237,7 @@ public class SMSXMPP {
         }
     }
 
+    // Handles >>start
     private void SendStartCommand() {
         messageListener.Start();
         System.out.println("Send to phone [START]");
@@ -153,6 +247,7 @@ public class SMSXMPP {
         }
     }
 
+    // Handles >>stop
     private void SendStopCommand() {
         messageListener.Stop();
         System.out.println("Send to phone [STOP]");
@@ -162,6 +257,7 @@ public class SMSXMPP {
         }
     }
 
+    // Handles >>terminate
     private void TerminateServer() {
         System.out.print("System TERMINATION...");
         smtpsms.Write("Are you sure you wish to terminate the server?");
@@ -175,7 +271,8 @@ public class SMSXMPP {
                 System.out.println("Notification delivery [FAIL]");
             }
             System.out.println(" [Done]");
-            this.connection.disconnect();
+            //this.connection.disconnect();
+            this.comm.Logout();
             this.smtpsms.Close();
             System.exit(0);
         } else {
@@ -183,6 +280,7 @@ public class SMSXMPP {
         }
     }
 
+    // Handles >>name
     private void ChangeRecipientCommand(String command) {
         String name = ChangeRecipient(command);
         if (name != null) {
@@ -204,81 +302,28 @@ public class SMSXMPP {
 
         System.out.print("Changing recipient...");
 
-        for (RosterEntry entry : roster.getEntries()) {
-            if (entry.getName().toLowerCase().contains(new_to.toLowerCase()) ||
-                entry.getUser().equals(new_to)) {
-                this.recipient = entry.getUser();
-                System.out.println(" [" + entry.getName() + " " + entry.getUser() + "]");
-                return entry.getName();
-            }
+        boolean success = this.comm.SetRecipient(new_to);
+        if (success) {
+            System.out.println(" [Done]");
+            return this.comm.GetRecipientFullName();
+        } else {
+            System.out.println(" [FAIL]");
+            return null;
         }
-
-        System.out.println(" [FAIL]");
-        return null;
     }
 
     private boolean SendMessageToChat(String s) {
-        if (s.isEmpty())
-            return true;
-
-        if (this.recipient == null || this.recipient.isEmpty()) {
-            System.out.println("No recipient set.");
-            boolean success = smtpsms.Write("Please set a recipient.");
-            if (!success) {
+        boolean success = this.comm.SendMessage(s);
+        if (!success) {
+            if (!smtpsms.Write("Could not send message. Please try later."))
                 System.out.println("Notification delivery [FAIL]");
-            }
-            return false;
-        }
-        try {
-            Chat chat = chats.get(this.recipient);
-            chat.sendMessage(s);
-        } catch (XMPPException e) {
-            boolean success = smtpsms.Write("Could not send message. Please try later.");
-            System.out.println("Message send [FAIL]");
-            if (!success) {
-                System.out.println("Notification delivery [FAIL]");
-            }
-            return false;
-        }
-        return true;
-    }
-
-    private void RegisterPhone() {
-        System.out.println("Waiting for phone.");
-        System.out.println("Please send a text message to " + SMS_USER + "@gmail.com");
-
-        // Wait for a message to come in.
-        while (this.smtpsms.Read() == null) {
-            Wait();
-        }
-        System.out.println("Configured for " + this.smtpsms.GetRecipient());
-    }
-
-    // Login to Facebook Chat
-    private void FacebookLogin(String user, String pass) {
-        System.out.print("Logging into Facebook as " + FB_CHAT_USER + "...");
-
-        SASLAuthentication.registerSASLMechanism("DIGEST-MD5", FBSASL.class);
-        ConnectionConfiguration config = new ConnectionConfiguration("chat.facebook.com", 5222);
-        this.connection = new XMPPConnection(config);
-
-        try {
-            this.connection.connect();
-            this.connection.login(user, pass);
-        } catch (XMPPException e) {
-            System.out.println(" [FAIL]");
-            System.exit(-1);
         }
 
-        this.roster = this.connection.getRoster();
-        this.rosterListener = new FBRosterListener();
-        this.roster.addRosterListener(this.rosterListener);
-
-        System.out.println(" [Done]");
+        return success;
     }
 
     private void Wait() {
-        this.Wait(1000);
+        this.Wait(5000); // 5 sec
     }
 
     private void Wait(int millis) {
@@ -287,5 +332,11 @@ public class SMSXMPP {
         } catch (InterruptedException e) {
             // Do nothing.
         }
+    }
+
+    private String TimeDiffString(long start, long end) {
+        long diff = end - start;
+        double secs = (double) diff / 1000d;
+        return String.format("%.3g", secs);
     }
 }

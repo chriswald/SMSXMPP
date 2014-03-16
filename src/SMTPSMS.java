@@ -5,7 +5,6 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.search.FlagTerm;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.rmi.RemoteException;
 import java.util.*;
 
 /**
@@ -76,9 +75,9 @@ public class SMTPSMS {
 
     public boolean Close() {
         try {
-            this.store.close();
-            this.folder.close(true);
             this.transport.close();
+            this.folder.close(true);
+            this.store.close();
         } catch (MessagingException e) {
             return false;
         }
@@ -126,7 +125,7 @@ public class SMTPSMS {
 
     public String Read() {
         Message[] messages = this.GetMessages();
-        if (messages.length == 0)
+        if (messages == null)
             return null;
 
         Collections.addAll(messageQueue, messages);
@@ -159,7 +158,7 @@ public class SMTPSMS {
             }
         }
 
-        return "";
+        return null;
     }
 
     private boolean GetStore() {
@@ -196,9 +195,13 @@ public class SMTPSMS {
                 this.GetStore();
             if (!this.folder.isOpen())
                 this.GetFolder();
-            return this.folder.search(ft);
+            Message[] messages = this.folder.search(ft);
+            if (messages.length > 0)
+                return messages;
+            else
+                return null;
         } catch (MessagingException e) {
-            return new Message[0];
+            return null;
         }
     }
 

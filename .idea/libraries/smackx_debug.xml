@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="smackx-debug">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/smackx-debug.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

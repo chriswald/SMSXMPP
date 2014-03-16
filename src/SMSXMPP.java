@@ -1,20 +1,16 @@
 import org.jivesoftware.smack.Connection;
-import org.jivesoftware.smack.RosterEntry;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-
 /**
  * Author: Chris Wald
  * Date: 8/13/13
  * Time: 11:09 AM
  */
 public class SMSXMPP {
-    private static String FB_CHAT_USER;
-    private static String FB_CHAT_PASS;
     private static String SMS_USER;
     private static String SMS_PASS;
 
@@ -40,6 +36,9 @@ public class SMSXMPP {
         SMS_USER = args[1];
         SMS_PASS = args[2];
 
+        if (!SMS_USER.endsWith("@gmail.com"))
+            SMS_USER += "@gmail.com";
+
         new SMSXMPP().run();
     }
 
@@ -47,7 +46,7 @@ public class SMSXMPP {
         try {
             BufferedReader br = new BufferedReader(new FileReader(filename));
             String line;
-            ServiceLoginInfo info = null;
+            ServiceLoginInfo info;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty())
@@ -172,7 +171,7 @@ public class SMSXMPP {
 
     private boolean RegisterPhone() {
         System.out.println("Waiting for phone.");
-        System.out.println("Please send a text message to " + SMS_USER + "@gmail.com");
+        System.out.println("Please send a text message to " + SMS_USER);
 
         // Wait for a message to come in.
         while (this.smtpsms.Read() == null) {

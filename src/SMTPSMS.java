@@ -19,7 +19,7 @@ public class SMTPSMS {
     private Store store;
     private Folder folder;
 
-    private LinkedList<Message> messageQueue = new LinkedList<Message>();
+    private LinkedList<Message> messageQueue = new LinkedList<>();
 
     private static final String SERVER = "imap.gmail.com";
 

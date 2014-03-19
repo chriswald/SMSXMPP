@@ -20,10 +20,10 @@ public class SMSXMPP {
     private JabberComm comm = new JabberComm();
     private JabberLogin fblogin = new FacebookLogin();
     private JabberLogin googlelogin = new GoogleTalkLogin();
-    private ArrayList<JabberLogin> services = new ArrayList<JabberLogin>();
+    private ArrayList<JabberLogin> services = new ArrayList<>();
 
     private static String serviceLoginInfoFile;
-    private ArrayList<ServiceLoginInfo> loginInfo = new ArrayList<ServiceLoginInfo>();
+    private ArrayList<ServiceLoginInfo> loginInfo = new ArrayList<>();
 
     public static void main(String[] args) {
         if (args.length != 3) {
@@ -222,17 +222,22 @@ public class SMSXMPP {
 
         command = command.trim().toLowerCase();
 
-        if (command.equals("start")) {
-            // Start sending chat messages to the phone.
-            SendStartCommand();
-        } else if (command.equals("stop")) {
-            // Stop sending chat messages to the phone.
-            SendStopCommand();
-        } else if (command.equals("terminate")) {
-            // Close the program "normally".
-            TerminateServer();
-        } else {
-            ChangeRecipientCommand(command);
+        switch (command) {
+            case "start":
+                // Start sending chat messages to the phone.
+                SendStartCommand();
+                break;
+            case "stop":
+                // Stop sending chat messages to the phone.
+                SendStopCommand();
+                break;
+            case "terminate":
+                // Close the program "normally".
+                TerminateServer();
+                break;
+            default:
+                ChangeRecipientCommand(command);
+                break;
         }
     }
 

@@ -1,21 +1,15 @@
 import org.jivesoftware.smack.*;
-import org.jivesoftware.smack.packet.Presence;
-import org.jivesoftware.smack.packet.RosterPacket;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
-/**
- * Created by Chris on 3/12/14.
- */
 public class JabberComm {
     private Roster roster;
     private String recipient;
-    private Map<String, Chat> chats = new HashMap<String, Chat>();
-    private ArrayList<Connection> connections = new ArrayList<Connection>();
-    private ArrayList<JabberLogin> logins = new ArrayList<JabberLogin>();
+    private Map<String, Chat> chats = new HashMap<>();
+    private ArrayList<Connection> connections = new ArrayList<>();
+    private ArrayList<JabberLogin> logins = new ArrayList<>();
     private MessageListener messageListener;
 
     public boolean Login(JabberLogin login, String username, String password) {
@@ -95,10 +89,9 @@ public class JabberComm {
     public void SetMessageListener(MessageListener messageListener) {
         Roster.setDefaultSubscriptionMode(Roster.SubscriptionMode.accept_all);
         // Remove the old message listeners
-        Iterator it = chats.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry pairs = (Map.Entry) it.next();
-            ((Chat)(pairs.getValue())).removeMessageListener(this.messageListener);
+        for (Object o : chats.entrySet()) {
+            Map.Entry pairs = (Map.Entry) o;
+            ((Chat) (pairs.getValue())).removeMessageListener(this.messageListener);
         }
         this.chats.clear();
 

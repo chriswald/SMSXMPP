@@ -1,15 +1,14 @@
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.sasl.Sasl;
-
 import org.jivesoftware.smack.SASLAuthentication;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.sasl.SASLMechanism;
 import org.jivesoftware.smack.util.Base64;
+
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.Sasl;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Author: Chris Wald
@@ -24,7 +23,7 @@ public class FBSASL extends SASLMechanism {
 
     protected void authenticate() throws IOException, XMPPException {
         String[] mechanisms = { getName() };
-        Map<String, String> props = new HashMap<String, String>();
+        Map<String, String> props = new HashMap<>();
         sc = Sasl.createSaslClient(mechanisms, null, "xmpp", hostname, props, this);
 
         super.authenticate();
@@ -32,7 +31,7 @@ public class FBSASL extends SASLMechanism {
 
     public void authenticate(String username, String host, CallbackHandler cbh) throws IOException, XMPPException {
         String[] mechanisms = { getName() };
-        Map<String,String> props = new HashMap<String,String>();
+        Map<String,String> props = new HashMap<>();
         sc = Sasl.createSaslClient(mechanisms, null, "xmpp", host, props, cbh);
         super.authenticate();
     }

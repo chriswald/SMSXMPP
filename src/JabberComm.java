@@ -5,9 +5,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class JabberComm {
-    private Roster roster;
     private String recipient;
     private Map<String, Chat> chats = new HashMap<>();
+    private ArrayList<Roster> rosters = new ArrayList<>();
     private ArrayList<Connection> connections = new ArrayList<>();
     private ArrayList<JabberLogin> logins = new ArrayList<>();
     private MessageListener messageListener;
@@ -18,9 +18,10 @@ public class JabberComm {
             return false;
 
         Connection connection = login.getConnection();
-        this.roster = connection.getRoster();
+        Roster roster = connection.getRoster();
         FBRosterListener rosterListener = new FBRosterListener();
-        this.roster.addRosterListener(rosterListener);
+        roster.addRosterListener(rosterListener);
+        rosters.add(roster);
         logins.add(login);
         connections.add(connection);
         return true;
@@ -55,15 +56,17 @@ public class JabberComm {
             return false;
 
         String new_recip = null;
-        for (RosterEntry entry : roster.getEntries()) {
-            if (entry.getName().toLowerCase().contains(recipient.toLowerCase()) ||
-                    entry.getUser().equals(recipient)) {
-                new_recip = entry.getUser();
-                // If the user was found is is available on this service, switch to this user.
-                // Otherwise keep searching in case they're available on some other service.
-                if (this.roster.getPresence(new_recip).isAvailable()) {
-                    this.recipient = new_recip;
-                    return true;
+        for (Roster roster : rosters) {
+            for (RosterEntry entry : roster.getEntries()) {
+                if (entry.getName().toLowerCase().contains(recipient.toLowerCase()) ||
+                        entry.getUser().equals(recipient)) {
+                    new_recip = entry.getUser();
+                    // If the user was found is is available on this service, switch to this user.
+                    // Otherwise keep searching in case they're available on some other service.
+                    if (roster.getPresence(new_recip).isAvailable()) {
+                        this.recipient = new_recip;
+                        return true;
+                    }
                 }
             }
         }
@@ -83,7 +86,12 @@ public class JabberComm {
     }
 
     public String GetRecipientFullName() {
-        return this.roster.getEntry(this.recipient).getName().trim();
+        for (Roster roster : rosters) {
+            RosterEntry entry = roster.getEntry(this.recipient);
+            if (entry != null)
+                return entry.getName().trim();
+        }
+        return null;
     }
 
     public void SetMessageListener(MessageListener messageListener) {
@@ -99,13 +107,15 @@ public class JabberComm {
         this.messageListener = messageListener;
         for (Connection connection : connections) {
             ChatManager chatManager = connection.getChatManager();
-            for (RosterEntry entry : roster.getEntries()) {
-                this.chats.put(entry.getUser(), chatManager.createChat(entry.getUser(), this.messageListener));
+            for (Roster roster : rosters) {
+                for (RosterEntry entry : roster.getEntries()) {
+                    this.chats.put(entry.getUser(), chatManager.createChat(entry.getUser(), this.messageListener));
+                }
             }
         }
     }
 
-    public Roster getRoster() {
-        return roster;
+    public ArrayList<Roster> getRoster() {
+        return rosters;
     }
 }
